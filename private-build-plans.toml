@@ -130,7 +130,7 @@ menu = 800
 css = 800
 
 [buildPlans.IoskeleyMono.widths.Normal]
-shape = 600
+shape = 500
 menu = 5
 css = "normal"
 
