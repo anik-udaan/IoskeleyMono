@@ -33,7 +33,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ttfautohint python3
 
-      # 4. Set up Node.js, which is required by the Iosevka build scripts
+      # 4. Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -43,43 +43,56 @@ jobs:
       - name: Copy custom build plan
         run: cp private-build-plans.toml iosevka-src/
 
-      # 6. Install dependencies and build ALL font formats
-      - name: Install dependencies and build all font formats
+      # 6. Install dependencies and build ALL 4 variants
+      # Note: 'contents::' builds both TTF and Webfonts (WOFF2)
+      - name: Install dependencies and build fonts
         run: |
           cd iosevka-src
           npm install
-          npm run build -- contents::IoskeleyMono
+          npm run build -- contents::IoskeleyMono contents::IoskeleyQuasi contents::IoskeleySlabMono contents::IoskeleySlabQuasi
 
-      # 7. Verify build output exists for all formats
-      - name: Verify build output
+      # 7. Verify and Package font files
+      # Uses a loop to handle all 4 families dynamically
+      - name: Package font files
         run: |
-          if [ ! -d "iosevka-src/dist/IoskeleyMono/TTF" ] || [ ! -d "iosevka-src/dist/IoskeleyMono/WOFF2" ]; then
-            echo "Build output directories (TTF and/or WOFF2) not found!"
-            exit 1
-          fi
-          echo "TTF and WOFF2 build directories verified."
+          # Define the list of plans to package
+          PLANS=("IoskeleyMono" "IoskeleyQuasi" "IoskeleySlabMono" "IoskeleySlabQuasi")
+          
+          cd iosevka-src/dist
+          
+          for PLAN in "${PLANS[@]}"; do
+            echo "Processing $PLAN..."
+            
+            # Verify output exists
+            if [ ! -d "$PLAN/TTF" ] || [ ! -d "$PLAN/WOFF2" ]; then
+              echo "Error: Build output for $PLAN not found!"
+              exit 1
+            fi
 
-      # 8. Create separate ZIP archives for Desktop and Web users
-      - name: Package font files into separate archives
-        run: |
-          # Navigate into the main output directory
-          cd iosevka-src/dist/IoskeleyMono
+            # Enter the plan directory
+            cd "$PLAN"
 
-          # Package the Hinted TTF fonts into the workspace root
-          zip -r ../../../IoskeleyMono-TTF-Hinted.zip TTF
+            # 1. Package Hinted TTF (Root workspace)
+            zip -r -q "../../../$PLAN-TTF-Hinted.zip" TTF
 
-          # Package the Unhinted TTF fonts into the workspace root
-          zip -r ../../../IoskeleyMono-TTF-Unhinted.zip TTF-Unhinted
+            # 2. Package Unhinted TTF
+            zip -r -q "../../../$PLAN-TTF-Unhinted.zip" TTF-Unhinted
 
-          # Package all WOFF2 fonts into the workspace root
-          zip -r ../../../IoskeleyMono-Web.zip WOFF2 WOFF2-Unhinted
+            # 3. Package Webfonts (WOFF2)
+            zip -r -q "../../../$PLAN-Web.zip" WOFF2 WOFF2-Unhinted
+            
+            # Go back to dist directory
+            cd ..
+          done
+          
+          echo "All packages created successfully."
 
-      # 9. Set the release version number
+      # 8. Set the release version number
       - name: Set Release Version
         id: vars
         run: echo "tag=$(date +'%Y.%m.%d')-${{ github.run_number }}" >> $GITHUB_OUTPUT
 
-      # 10. Create a new GitHub Release and upload all three ZIP files
+      # 9. Create a new GitHub Release and upload assets
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v1
         with:
@@ -87,16 +100,18 @@ jobs:
           name: "Release ${{ steps.vars.outputs.tag }}"
           body: |
             Automated build triggered by commit ${{ github.sha }}.
+            
+            ### Font Families Included:
+            *   **Ioskeley Mono**: Sans-serif, Monospace (Standard code font).
+            *   **Ioskeley Quasi**: Sans-serif, Quasi-proportional (More readable, narrower spacing).
+            *   **Ioskeley Slab Mono**: Slab-serif, Monospace.
+            *   **Ioskeley Slab Quasi**: Slab-serif, Quasi-proportional.
 
-            **For Desktop Users:**
-            - `IoskeleyMono-TTF-Hinted.zip`: Fonts with hinting. Best for most users on standard-resolution screens.
-            - `IoskeleyMono-TTF-Unhinted.zip`: Raw fonts without hinting. Preferred by some on high-DPI screens.
-
-            **For Web Developers:**
-            - `IoskeleyMono-Web.zip`: Contains all WOFF2 font files for web use (Hinted and Unhinted).
+            ### Asset Guide:
+            *   `*-TTF-Hinted.zip`: Best for Windows/Linux desktop users (Standard resolution).
+            *   `*-TTF-Unhinted.zip`: Best for macOS or High-DPI screens.
+            *   `*-Web.zip`: WOFF2 files for web embedding.
           files: |
-            IoskeleyMono-TTF-Hinted.zip
-            IoskeleyMono-TTF-Unhinted.zip
-            IoskeleyMono-Web.zip
+            *.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
