@@ -50,19 +50,19 @@ jobs:
         run: |
           cd iosevka-src
           npm install
-          npm run build -- ttf::IoskeleyMono ttf::IoskeleyQuasi --jCmd=1
+          npm run build -- ttf::IoskeleyMono --jCmd=1
 
       # 7. Verify and Package ONLY Hinted TTF files
       - name: Package font files
         run: |
-          # Only process these two plans
-          PLANS=("IoskeleyMono" "IoskeleyQuasi")
-          
+          # Process build plans
+          PLANS=("IoskeleyMono")
+
           cd iosevka-src/dist
-          
+
           for PLAN in "${PLANS[@]}"; do
             echo "Processing $PLAN..."
-            
+
             # Verify TTF output exists
             if [ ! -d "$PLAN/TTF" ]; then
               echo "Error: TTF output for $PLAN not found!"
@@ -74,11 +74,11 @@ jobs:
 
             # Package ONLY the Hinted TTF folder
             zip -r -q "../../../$PLAN-TTF-Hinted.zip" TTF
-            
+
             # Go back to dist directory
             cd ..
           done
-          
+
           echo "Packages created successfully."
 
       # 8. Set the release version number
@@ -94,12 +94,10 @@ jobs:
           name: "Release ${{ steps.vars.outputs.tag }}"
           body: |
             Automated build triggered by commit ${{ github.sha }}.
-            
+
             ### Included Fonts (Hinted TTF only):
             *   **IoskeleyMono-TTF-Hinted.zip**: Monospace version.
-            *   **IoskeleyQuasi-TTF-Hinted.zip**: Quasi-proportional version (SB=85).
           files: |
             IoskeleyMono-TTF-Hinted.zip
-            IoskeleyQuasi-TTF-Hinted.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
