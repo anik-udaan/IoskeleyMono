@@ -50,13 +50,13 @@ jobs:
         run: |
           cd iosevka-src
           npm install
-          npm run build -- ttf::IoskeleyMono --jCmd=1
+          npm run build -- ttf::IoskeleyMono ttf::IoskeleyMonoCondensed --jCmd=1
 
       # 7. Verify and Package ONLY Hinted TTF files
       - name: Package font files
         run: |
           # Process build plans
-          PLANS=("IoskeleyMono")
+          PLANS=("IoskeleyMono" "IoskeleyMonoCondensed")
 
           cd iosevka-src/dist
 
@@ -97,7 +97,9 @@ jobs:
 
             ### Included Fonts (Hinted TTF only):
             *   **IoskeleyMono-TTF-Hinted.zip**: Monospace version.
+            *   **IoskeleyMonoCondensed-TTF-Hinted.zip**: Condensed monospace version.
           files: |
             IoskeleyMono-TTF-Hinted.zip
+            IoskeleyMonoCondensed-TTF-Hinted.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
